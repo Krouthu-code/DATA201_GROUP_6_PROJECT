@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Healthcare Analytics Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0b0f1a;
+    --surface:   #111827;
+    --surface2:  #1a2235;
+    --border:    #1f2d45;
+    --teal:      #14b8a6;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --font-mono: 'Space Mono', monospace;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 36px;
+    display: flex; align-items: center; gap: 16px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo-pill {
+    background: var(--teal); color: #000;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    letter-spacing: 2px; padding: 5px 12px; border-radius: 3px;
+  }
+  header h1 { font-family: var(--font-mono); font-size: 17px; font-weight: 700; letter-spacing: 1px; }
+  .header-sub { font-size: 12px; color: var(--muted); margin-left: auto; font-family: var(--font-mono); }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; min-height: calc(100vh - 65px); }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 270px; min-width: 270px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 16px 0;
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+
+  /* Member section header */
+  .member-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px 10px 20px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+    border-left: 3px solid transparent;
+  }
+  .member-header:hover { background: var(--surface2); }
+  .member-header.open { border-left-color: var(--teal); }
+
+  .member-info { display: flex; align-items: center; gap: 10px; }
+  .member-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .member-name {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .member-count {
+    font-size: 10px; color: var(--muted); font-family: var(--font-mono);
+    margin-top: 2px;
+  }
+  .member-chevron {
+    font-size: 10px; color: var(--muted);
+    transition: transform 0.2s;
+  }
+  .member-header.open .member-chevron { transform: rotate(90deg); }
+
+  /* Query list under each member */
+  .member-queries {
+    display: none;
+    flex-direction: column;
+    background: rgba(0,0,0,0.15);
+    border-bottom: 1px solid var(--border);
+  }
+  .member-queries.open { display: flex; }
+
+  .nav-btn {
+    display: block; width: 100%;
+    background: none; border: none; text-align: left;
+    padding: 9px 16px 9px 36px;
+    cursor: pointer; color: var(--muted);
+    font-family: var(--font-body); font-size: 12.5px;
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
+    line-height: 1.4;
+  }
+  .nav-btn:hover { color: var(--text); background: var(--surface2); }
+  .nav-btn.active { color: var(--teal); border-left-color: var(--teal); background: rgba(20,184,166,.08); }
+
+  /* Empty placeholder */
+  .member-empty {
+    padding: 10px 16px 10px 36px;
+    font-size: 11px; color: var(--muted);
+    font-family: var(--font-mono);
+    font-style: italic;
+  }
+
+  /* ── MAIN ── */
+  main { flex: 1; padding: 32px; overflow-y: auto; }
+
+  /* ── STAT CARDS ── */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px; position: relative; overflow: hidden;
+  }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 2px; background: var(--teal);
+  }
+  .stat-label { font-size: 11px; font-family: var(--font-mono); letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+  .stat-val { font-size: 28px; font-family: var(--font-mono); font-weight: 700; color: var(--teal); }
+  .stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ── CHART PANEL ── */
+  .chart-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .chart-header {
+    padding: 18px 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .chart-title { font-family: var(--font-mono); font-size: 14px; font-weight: 700; }
+  .chart-header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .chart-badge {
+    font-size: 10px; font-family: var(--font-mono); letter-spacing: 1px;
+    background: rgba(20,184,166,.15); color: var(--teal);
+    padding: 3px 10px; border-radius: 20px; border: 1px solid rgba(20,184,166,.3);
+  }
+  .sql-badge {
+    font-size: 10px; font-family: var(--font-mono); letter-spacing: 1px;
+    background: rgba(168,85,247,.12); color: #a855f7;
+    padding: 3px 10px; border-radius: 20px; border: 1px solid rgba(168,85,247,.28);
+  }
+  .author-badge {
+    font-size: 10px; font-family: var(--font-mono); letter-spacing: 1px;
+    padding: 3px 10px; border-radius: 20px;
+  }
+  #chart-container { padding: 8px; min-height: 420px; display: flex; align-items: center; justify-content: center; }
+  #plotly-chart { width: 100%; height: 100%; }
+
+  /* ── SQL PREVIEW ── */
+  .sql-section { margin-top: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .sql-header {
+    padding: 12px 24px; border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; color: var(--muted);
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; user-select: none;
+  }
+  .sql-header:hover { color: var(--text); }
+  .sql-body { padding: 16px 24px; overflow-x: auto; display: none; }
+  .sql-body.open { display: block; }
+  .sql-body pre { font-family: var(--font-mono); font-size: 12px; color: #94a3b8; line-height: 1.7; white-space: pre; }
+
+  /* ── TABLE ── */
+  .table-section { margin-top: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .table-header { padding: 14px 24px; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; color: var(--muted); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: var(--surface2); padding: 10px 18px; text-align: left; font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; color: var(--teal); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 10px 18px; font-size: 13px; }
+  tbody tr:last-child { border-bottom: none; }
+
+  /* ── LOADING ── */
+  .loading { display: flex; flex-direction: column; align-items: center; gap: 14px; color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── WELCOME ── */
+  .welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 480px; gap: 14px; text-align: center; }
+  .welcome-icon { font-size: 52px; opacity: .5; }
+  .welcome h2 { font-family: var(--font-mono); font-size: 20px; }
+  .welcome p { color: var(--muted); font-size: 14px; max-width: 380px; line-height: 1.6; }
+
+  @media (max-width: 900px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .sidebar { width: 220px; min-width: 220px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo-pill">HC·DB</span>
+  <h1>HEALTHCARE ANALYTICS DASHBOARD</h1>
+  <span class="header-sub">55,000 PATIENT RECORDS · MySQL · GROUP 6</span>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <!-- Dynamically built by JS from MEMBERS + queries passed by Flask -->
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">TOTAL PATIENTS</div>
+        <div class="stat-val">55,000</div>
+        <div class="stat-sub">Synthetic records</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">NORMALIZED TABLES</div>
+        <div class="stat-val">6</div>
+        <div class="stat-sub">3NF compliant</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">DATASET COLUMNS</div>
+        <div class="stat-val">15</div>
+        <div class="stat-sub">Original features</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">SQL QUERIES</div>
+        <div class="stat-val" id="total-query-count">—</div>
+        <div class="stat-sub">Across all members</div>
+      </div>
+    </div>
+
+    <!-- CHART PANEL -->
+    <div class="chart-panel" id="chart-panel" style="display:none">
+      <div class="chart-header">
+        <span class="chart-title" id="chart-title">—</span>
+        <div class="chart-header-right">
+          <span class="author-badge" id="author-badge" style="display:none"></span>
+          <span class="sql-badge" id="sql-technique-badge" style="display:none"></span>
+          <span class="chart-badge" id="chart-type-badge">BAR</span>
+        </div>
+      </div>
+      <div id="chart-container">
+        <div class="loading" id="loading-indicator">
+          <div class="spinner"></div>
+          <span>LOADING DATA...</span>
+        </div>
+        <div id="plotly-chart" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- SQL PREVIEW -->
+    <div class="sql-section" id="sql-section" style="display:none">
+      <div class="sql-header" onclick="toggleSql()">
+        <span>SQL QUERY</span>
+        <span id="sql-toggle">▶ SHOW</span>
+      </div>
+      <div class="sql-body" id="sql-body">
+        <pre id="sql-code"></pre>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-section" id="table-section" style="display:none">
+      <div class="table-header">RAW QUERY RESULTS</div>
+      <div class="table-wrap">
+        <table><thead id="table-head"></thead><tbody id="table-body"></tbody></table>
+      </div>
+    </div>
+
+    <!-- WELCOME -->
+    <div class="welcome" id="welcome-msg">
+      <div class="welcome-icon">🏥</div>
+      <h2>SELECT A QUERY TO BEGIN</h2>
+      <p>Choose any query from the sidebar to render an interactive visualization and browse the raw SQL results below.</p>
+    </div>
+  </main>
+</div>
+
+<script>
+// ── DATA FROM FLASK ────────────────────────────────────────────
+const ALL_QUERIES = {{ queries | tojson }};
+
+// ── TEAM CONFIG ───────────────────────────────────────────────
+// Order controls sidebar order. color = avatar + accent color.
+const MEMBERS = [
+  { name: "Karishma", color: "#14b8a6", bg: "rgba(20,184,166,0.15)" },
+  { name: "Chinmayi", color: "#6366f1", bg: "rgba(99,102,241,0.15)" },
+  { name: "Mansi",    color: "#f59e0b", bg: "rgba(245,158,11,0.15)"  },
+  { name: "Abhijith", color: "#ec4899", bg: "rgba(236,72,153,0.15)"  },
+];
+
+// ── SQL TECHNIQUE LABELS ───────────────────────────────────────
+const SQL_TECHNIQUES = {
+  "top_conditions_by_insurer":       "WINDOW · RANK()",
+  "high_value_patients_cte":         "CTE · CROSS JOIN",
+  "billing_percentile_by_condition": "WINDOW · RUNNING SUM",
+  "readmission_risk_subquery":       "SUBQUERY · HAVING",
+  "doctor_performance_window":       "WINDOW · RANK + AVG OVER",
+  "condition_admission_rolling":     "CTE · ROLLING AVG",
+};
+
+// ── BUILD SIDEBAR ──────────────────────────────────────────────
+function buildSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
+  let totalQueries = 0;
+
+  MEMBERS.forEach((member, idx) => {
+    const memberQueries = Object.entries(ALL_QUERIES)
+      .filter(([k, v]) => v.author === member.name);
+
+    totalQueries += memberQueries.length;
+    const isOpen = idx === 0; // Karishma open by default
+
+    // Section wrapper
+    const section = document.createElement('div');
+    section.className = 'member-section';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'member-header' + (isOpen ? ' open' : '');
+    header.innerHTML = `
+      <div class="member-info">
+        <div class="member-avatar" style="background:${member.bg}; color:${member.color}">
+          ${member.name[0]}
+        </div>
+        <div>
+          <div class="member-name" style="color:${member.color}">${member.name}</div>
+          <div class="member-count">${memberQueries.length} quer${memberQueries.length !== 1 ? 'ies' : 'y'}</div>
+        </div>
+      </div>
+      <span class="member-chevron">▶</span>
+    `;
+    header.addEventListener('click', () => toggleMember(header, queryList));
+
+    // Query list
+    const queryList = document.createElement('div');
+    queryList.className = 'member-queries' + (isOpen ? ' open' : '');
+
+    if (memberQueries.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'member-empty';
+      empty.textContent = 'no queries yet';
+      queryList.appendChild(empty);
+    } else {
+      memberQueries.forEach(([key, meta]) => {
+        const btn = document.createElement('button');
+        btn.className = 'nav-btn';
+        btn.dataset.key = key;
+        btn.textContent = meta.title;
+        btn.addEventListener('click', () => loadQuery(key, btn));
+        queryList.appendChild(btn);
+      });
+    }
+
+    section.appendChild(header);
+    section.appendChild(queryList);
+    sidebar.appendChild(section);
+  });
+
+  document.getElementById('total-query-count').textContent = totalQueries;
+}
+
+function toggleMember(header, queryList) {
+  header.classList.toggle('open');
+  queryList.classList.toggle('open');
+}
+
+// ── PLOTLY ────────────────────────────────────────────────────
+const PLOTLY_LAYOUT = {
+  paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+  font: { family: 'DM Sans, sans-serif', color: '#e2e8f0', size: 12 },
+  margin: { t: 24, b: 80, l: 60, r: 24 },
+  xaxis: { gridcolor: '#1f2d45', linecolor: '#1f2d45', tickfont: { size: 11 }, automargin: true },
+  yaxis: { gridcolor: '#1f2d45', linecolor: '#1f2d45', tickfont: { size: 11 } },
+  legend: { bgcolor: 'rgba(0,0,0,0)', font: { size: 12 } }
+};
+const PLOTLY_CONFIG = { responsive: true, displayModeBar: false };
+
+function toggleSql() {
+  const body = document.getElementById('sql-body');
+  const toggle = document.getElementById('sql-toggle');
+  body.classList.toggle('open');
+  toggle.textContent = body.classList.contains('open') ? '▼ HIDE' : '▶ SHOW';
+}
+
+async function loadQuery(key, btn) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  document.getElementById('welcome-msg').style.display   = 'none';
+  document.getElementById('chart-panel').style.display   = 'block';
+  document.getElementById('table-section').style.display = 'none';
+  document.getElementById('sql-section').style.display   = 'none';
+  document.getElementById('loading-indicator').style.display = 'flex';
+  document.getElementById('plotly-chart').style.display  = 'none';
+
+  const sqlBody = document.getElementById('sql-body');
+  sqlBody.classList.remove('open');
+  document.getElementById('sql-toggle').textContent = '▶ SHOW';
+
+  const res = await fetch(`/data/${key}`);
+  const d   = await res.json();
+
+  document.getElementById('chart-title').textContent = d.title;
+  document.getElementById('chart-type-badge').textContent = d.chart.toUpperCase().replace('_', ' ');
+
+  // Author badge
+  const authorBadge = document.getElementById('author-badge');
+  const meta = ALL_QUERIES[key];
+  if (meta && meta.author) {
+    const member = MEMBERS.find(m => m.name === meta.author);
+    authorBadge.textContent = meta.author;
+    authorBadge.style.display = 'inline-block';
+    authorBadge.style.background = member ? member.bg : 'rgba(100,116,139,0.2)';
+    authorBadge.style.color = member ? member.color : '#94a3b8';
+    authorBadge.style.border = `1px solid ${member ? member.color + '55' : '#334155'}`;
+  } else {
+    authorBadge.style.display = 'none';
+  }
+
+  // SQL technique badge
+  const techBadge = document.getElementById('sql-technique-badge');
+  const tech = SQL_TECHNIQUES[key];
+  if (tech) { techBadge.textContent = tech; techBadge.style.display = 'inline-block'; }
+  else       { techBadge.style.display = 'none'; }
+
+  if (d.sql) {
+    document.getElementById('sql-code').textContent = d.sql.trim();
+    document.getElementById('sql-section').style.display = 'block';
+  }
+
+  renderChart(d);
+  renderTable(d.rows);
+
+  document.getElementById('loading-indicator').style.display = 'none';
+  document.getElementById('plotly-chart').style.display      = 'block';
+  document.getElementById('table-section').style.display     = 'block';
+}
+
+function renderChart(d) {
+  const el = document.getElementById('plotly-chart');
+  const rows = d.rows;
+  const xKey = d.x, yKey = d.y, color = d.color;
+
+  if (d.chart === 'bar') {
+    Plotly.newPlot(el, [{
+      type: 'bar', x: rows.map(r => r[xKey]), y: rows.map(r => parseFloat(r[yKey])),
+      marker: { color, opacity: 0.9 },
+      hovertemplate: `<b>%{x}</b><br>${yKey}: %{y:,.2f}<extra></extra>`
+    }], { ...PLOTLY_LAYOUT, height: 400 }, PLOTLY_CONFIG);
+
+  } else if (d.chart === 'horizontal_bar') {
+    Plotly.newPlot(el, [{
+      type: 'bar', orientation: 'h',
+      x: rows.map(r => parseFloat(r[xKey])), y: rows.map(r => r[yKey]),
+      marker: { color, opacity: 0.9 },
+      hovertemplate: `<b>%{y}</b><br>${xKey}: %{x:,.2f}<extra></extra>`
+    }], { ...PLOTLY_LAYOUT, height: 420, margin: { ...PLOTLY_LAYOUT.margin, l: 200 } }, PLOTLY_CONFIG)
+    .then(() => Plotly.Plots.resize(el));
+
+  } else if (d.chart === 'line') {
+    const groupKey = d.group;
+    if (groupKey) {
+      const groups = [...new Set(rows.map(r => r[groupKey]))];
+      const palette = ['#14b8a6','#6366f1','#f59e0b','#ec4899','#10b981','#3b82f6','#f97316','#84cc16'];
+      const traces = groups.map((g, i) => {
+        const filtered = rows.filter(r => r[groupKey] === g);
+        return { type: 'scatter', mode: 'lines+markers', name: g,
+          x: filtered.map(r => r[xKey]), y: filtered.map(r => parseFloat(r[yKey])),
+          line: { color: palette[i % palette.length], width: 2 }, marker: { size: 4 } };
+      });
+      Plotly.newPlot(el, traces, { ...PLOTLY_LAYOUT, height: 420 }, PLOTLY_CONFIG);
+    } else {
+      Plotly.newPlot(el, [{
+        type: 'scatter', mode: 'lines+markers',
+        x: rows.map(r => r[xKey]), y: rows.map(r => parseFloat(r[yKey])),
+        line: { color, width: 2.5 }, marker: { color, size: 6 },
+        hovertemplate: `<b>%{x}</b><br>${yKey}: %{y:,.0f}<extra></extra>`
+      }], { ...PLOTLY_LAYOUT, height: 400 }, PLOTLY_CONFIG);
+    }
+
+  } else if (d.chart === 'pie') {
+    Plotly.newPlot(el, [{
+      type: 'pie', labels: rows.map(r => r[xKey]), values: rows.map(r => parseFloat(r[yKey])),
+      hole: 0.42,
+      marker: { colors: ['#14b8a6','#6366f1','#f59e0b','#ec4899','#10b981','#3b82f6','#f97316','#84cc16'] },
+      textinfo: 'label+percent',
+      hovertemplate: `<b>%{label}</b><br>Count: %{value:,}<extra></extra>`
+    }], { ...PLOTLY_LAYOUT, height: 400, margin: { t:24,b:24,l:24,r:24 },
+      showlegend: true, legend: { orientation:'v', x:1.02, y:0.5, font:{size:12}, bgcolor:'rgba(0,0,0,0)' }
+    }, PLOTLY_CONFIG);
+
+  } else if (d.chart === 'grouped_bar') {
+    const groups = [...new Set(rows.map(r => r[d.group]))];
+    const palette = ['#14b8a6','#6366f1','#f59e0b','#ec4899','#10b981','#3b82f6'];
+    const traces = groups.map((g, i) => ({
+      type: 'bar', name: g,
+      x: rows.filter(r => r[d.group] === g).map(r => r[xKey]),
+      y: rows.filter(r => r[d.group] === g).map(r => parseFloat(r[yKey])),
+      marker: { color: palette[i % palette.length] },
+      hovertemplate: `<b>%{x}</b> · ${g}<br>${yKey}: %{y:,.0f}<extra></extra>`
+    }));
+    Plotly.newPlot(el, traces, { ...PLOTLY_LAYOUT, height: 420, barmode: 'group' }, PLOTLY_CONFIG);
+  }
+}
+
+function renderTable(rows) {
+  if (!rows || rows.length === 0) return;
+  const keys = Object.keys(rows[0]);
+  document.getElementById('table-head').innerHTML = '<tr>' + keys.map(k => `<th>${k}</th>`).join('') + '</tr>';
+  document.getElementById('table-body').innerHTML = rows.slice(0, 50).map(row =>
+    '<tr>' + keys.map(k => {
+      const v = row[k];
+      const num = parseFloat(v);
+      const display = (!isNaN(num) && typeof v !== 'string')
+        ? num.toLocaleString(undefined, { maximumFractionDigits: 2 }) : v;
+      return `<td>${display ?? '—'}</td>`;
+    }).join('') + '</tr>'
+  ).join('');
+}
+
+// Init
+buildSidebar();
+</script>
+</body>
+</html>
