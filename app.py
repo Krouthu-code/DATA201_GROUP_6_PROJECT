@@ -244,19 +244,149 @@ QUERIES = {
     },
 
     # ── CHINMAYI ──────────────────────────────────────────────
-    # Add your queries here following the same format:
-    #
-    # "your_query_key": {
-    #     "author": "Chinmayi",
-    #     "title": "Your Chart Title",
-    #     "chart": "bar",        # bar | horizontal_bar | line | pie | grouped_bar
-    #     "x": "x_column",
-    #     "y": "y_column",
-    #     "color": "#6366f1",
-    #     "sql": """
-    #         SELECT ...
-    #     """
-    # },
+   # ── CHINMAYI ──────────────────────────────────────────────
+
+    "chinmayi_condition_billing_ranked": {
+        "author": "Chinmayi",
+        "title": "Medical Condition Billing Rank (Window Function)",
+        "chart": "bar",
+        "x": "condition_name",
+        "y": "avg_billing",
+        "color": "#6366f1",
+        "sql": """
+            SELECT
+                condition_name,
+                avg_billing,
+                billing_rank
+            FROM (
+                SELECT
+                    mc.condition_name,
+                    ROUND(AVG(a.billing_amount), 2) AS avg_billing,
+                    RANK() OVER (
+                        ORDER BY AVG(a.billing_amount) DESC
+                    ) AS billing_rank
+                FROM   Admissions a
+                JOIN   Medical_Conditions mc ON a.condition_id = mc.condition_id
+                GROUP  BY mc.condition_name
+            ) ranked
+            ORDER BY billing_rank ASC
+        """
+    },
+
+    "chinmayi_high_risk_above_hospital_avg": {
+        "author": "Chinmayi",
+        "title": "Patients Billed 50% Above Their Hospital Average (CTE)",
+        "chart": "bar",
+        "x": "hospital",
+        "y": "high_risk_count",
+        "color": "#ef4444",
+        "sql": """
+            WITH hospital_avg AS (
+                SELECT
+                    hospital,
+                    ROUND(AVG(billing_amount), 2) AS avg_billing
+                FROM   Admissions
+                GROUP  BY hospital
+            )
+            SELECT
+                a.hospital,
+                COUNT(*)                      AS high_risk_count,
+                ROUND(AVG(a.billing_amount), 2) AS avg_high_risk_billing,
+                h.avg_billing                 AS hospital_avg_billing
+            FROM   Admissions a
+            JOIN   hospital_avg h ON a.hospital = h.hospital
+            WHERE  a.billing_amount > h.avg_billing * 1.5
+            GROUP  BY a.hospital, h.avg_billing
+            ORDER  BY high_risk_count DESC
+        """
+    },
+
+    "chinmayi_readmission_by_condition": {
+        "author": "Chinmayi",
+        "title": "Readmission Count by Condition (Subquery + HAVING)",
+        "chart": "horizontal_bar",
+        "x": "condition_name",
+        "y": "readmission_count",
+        "color": "#f59e0b",
+        "sql": """
+            SELECT
+                mc.condition_name,
+                COUNT(*) AS readmission_count
+            FROM (
+                SELECT
+                    a.patient_id,
+                    a.condition_id,
+                    COUNT(*) AS visit_count
+                FROM   Admissions a
+                GROUP  BY a.patient_id, a.condition_id
+                HAVING COUNT(*) > 1
+            ) AS repeat_patients
+            JOIN Medical_Conditions mc ON repeat_patients.condition_id = mc.condition_id
+            GROUP  BY mc.condition_name
+            ORDER  BY readmission_count DESC
+        """
+    },
+
+    "chinmayi_billing_percentile_ntile": {
+        "author": "Chinmayi",
+        "title": "Patient Billing Quartile Distribution (NTILE Window Function)",
+        "chart": "bar",
+        "x": "billing_quartile",
+        "y": "patient_count",
+        "color": "#10b981",
+        "sql": """
+            SELECT
+                billing_quartile,
+                COUNT(*)                        AS patient_count,
+                ROUND(MIN(billing_amount), 2)   AS min_billing,
+                ROUND(MAX(billing_amount), 2)   AS max_billing,
+                ROUND(AVG(billing_amount), 2)   AS avg_billing
+            FROM (
+                SELECT
+                    patient_id,
+                    billing_amount,
+                    CONCAT('Q', NTILE(4) OVER (
+                        ORDER BY billing_amount ASC
+                    )) AS billing_quartile
+                FROM Admissions
+            ) AS quartiled
+            GROUP  BY billing_quartile
+            ORDER  BY billing_quartile ASC
+        """
+    },
+
+    "chinmayi_doctor_condition_volume": {
+        "author": "Chinmayi",
+        "title": "Top Doctors by Condition Volume (Subquery + Rank)",
+        "chart": "bar",
+        "x": "doctor_name",
+        "y": "total_patients",
+        "color": "#8b5cf6",
+        "sql": """
+            SELECT
+                doctor_name,
+                condition_name,
+                total_patients,
+                avg_billing
+            FROM (
+                SELECT
+                    d.doctor_name,
+                    mc.condition_name,
+                    COUNT(*)                        AS total_patients,
+                    ROUND(AVG(a.billing_amount), 2) AS avg_billing,
+                    RANK() OVER (
+                        PARTITION BY mc.condition_name
+                        ORDER BY COUNT(*) DESC
+                    ) AS rnk
+                FROM   Admissions a
+                JOIN   Medical_Conditions mc ON a.condition_id = mc.condition_id
+                JOIN   Doctors d ON a.doctor_id = d.doctor_id
+                GROUP  BY d.doctor_name, mc.condition_name
+            ) ranked
+            WHERE  rnk = 1
+            ORDER  BY total_patients DESC
+        """
+    },
 
     # ── MANSI ─────────────────────────────────────────────────
     # Add your queries here following the same format:
