@@ -390,20 +390,7 @@ QUERIES = {
 
 # ── MANSI ─────────────────────────────────────────────────
     # ── MANSI ─────────────────────────────────────────────────
-    "mansi_avg_billing_by_hospital": {
-    "author": "Mansi",
-    "title": "Average Billing by Hospital",
-    "chart": "bar",
-    "x": "hospital",
-    "y": "avg_billing",
-    "color": "#6366f1",
-    "sql": """
-        SELECT hospital, ROUND(AVG(billing_amount), 2) AS avg_billing
-        FROM Admissions
-        GROUP BY hospital
-        ORDER BY avg_billing DESC
-    """
-},
+   
 
 "mansi_billing_by_room_number": {
     "author": "Mansi",
@@ -428,40 +415,6 @@ QUERIES = {
     """
 },
 
-"mansi_avg_billing_by_admission_type": {
-    "author": "Mansi",
-    "title": "Average Billing by Admission Type",
-    "chart": "bar",
-    "x": "admission_type",
-    "y": "avg_billing",
-    "color": "#22c55e",
-    "sql": """
-        SELECT admission_type,
-               COUNT(*) AS total_cases,
-               ROUND(AVG(billing_amount), 2) AS avg_billing
-        FROM Admissions
-        GROUP BY admission_type
-        ORDER BY avg_billing DESC
-    """
-},
-
-"mansi_insurance_billing_comparison": {
-    "author": "Mansi",
-    "title": "Average Billing by Insurance Provider",
-    "chart": "bar",
-    "x": "insurance_provider",
-    "y": "avg_billing",
-    "color": "#0ea5e9",
-    "sql": """
-        SELECT p.insurance_provider,
-               COUNT(*) AS total_cases,
-               ROUND(AVG(a.billing_amount), 2) AS avg_billing
-        FROM Admissions a
-        JOIN Patients p ON a.patient_id = p.patient_id
-        GROUP BY p.insurance_provider
-        ORDER BY avg_billing DESC
-    """
-},
 
 "mansi_gender_distribution": {
     "author": "Mansi",
@@ -478,22 +431,6 @@ FROM Patients
 GROUP BY gender
     """
 },
-
-"mansi_avg_length_of_stay": {
-    "author": "Mansi",
-    "title": "Average Length of Stay (Days)",
-    "chart": "bar",
-    "x": "hospital",
-    "y": "avg_days",
-    "color": "#8b5cf6",
-    "sql": """
-        SELECT hospital,
-               ROUND(AVG(DATEDIFF(discharge_date, date_of_admission)), 2) AS avg_days
-        FROM Admissions
-        GROUP BY hospital
-        ORDER BY avg_days DESC
-    """
-},    
 
 "mansi_hospital_billing_rank_window": {
     "author": "Mansi",
@@ -539,6 +476,91 @@ GROUP BY gender
     """
 },
     
+"mansi_hospital_billing_above_average_cte": {
+    "author": "Mansi",
+    "title": "Hospitals Above Overall Average Billing",
+    "chart": "bar",
+    "x": "hospital",
+    "y": "avg_billing",
+    "color": "#6366f1",
+    "sql": """
+        WITH overall_avg AS (
+            SELECT AVG(billing_amount) AS overall_billing_avg
+            FROM Admissions
+        )
+        SELECT hospital,
+               ROUND(AVG(billing_amount), 2) AS avg_billing,
+               COUNT(*) AS total_admissions
+        FROM Admissions
+        GROUP BY hospital
+        HAVING AVG(billing_amount) > (SELECT overall_billing_avg FROM overall_avg)
+        ORDER BY avg_billing DESC
+    """
+},
+
+"mansi_admission_type_billing_rank": {
+    "author": "Mansi",
+    "title": "Admission Type Billing Rank",
+    "chart": "bar",
+    "x": "admission_type",
+    "y": "avg_billing",
+    "color": "#22c55e",
+    "sql": """
+        SELECT admission_type,
+               avg_billing,
+               RANK() OVER (ORDER BY avg_billing DESC) AS billing_rank
+        FROM (
+            SELECT admission_type,
+                   ROUND(AVG(billing_amount), 2) AS avg_billing
+            FROM Admissions
+            GROUP BY admission_type
+        ) ranked_admission_types
+        ORDER BY billing_rank
+    """
+},
+
+"mansi_insurance_high_cost_subquery": {
+    "author": "Mansi",
+    "title": "High Cost Cases by Insurance Provider",
+    "chart": "bar",
+    "x": "insurance_provider",
+    "y": "high_cost_cases",
+    "color": "#0ea5e9",
+    "sql": """
+        SELECT p.insurance_provider,
+               COUNT(*) AS high_cost_cases,
+               ROUND(AVG(a.billing_amount), 2) AS avg_high_cost_billing
+        FROM Admissions a
+        JOIN Patients p ON a.patient_id = p.patient_id
+        WHERE a.billing_amount > (
+            SELECT AVG(billing_amount)
+            FROM Admissions
+        )
+        GROUP BY p.insurance_provider
+        ORDER BY high_cost_cases DESC
+    """
+},
+
+"mansi_hospital_length_of_stay_rank": {
+    "author": "Mansi",
+    "title": "Hospital Length of Stay Rank",
+    "chart": "bar",
+    "x": "hospital",
+    "y": "avg_days",
+    "color": "#8b5cf6",
+    "sql": """
+        SELECT hospital,
+               avg_days,
+               RANK() OVER (ORDER BY avg_days DESC) AS stay_rank
+        FROM (
+            SELECT hospital,
+                   ROUND(AVG(DATEDIFF(discharge_date, date_of_admission)), 2) AS avg_days
+            FROM Admissions
+            GROUP BY hospital
+        ) stay_summary
+        ORDER BY stay_rank
+    """
+},
     
 
     # ── ABHIJITH ──────────────────────────────────────────────
