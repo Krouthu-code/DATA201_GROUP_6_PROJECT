@@ -436,6 +436,54 @@ QUERIES = {
         ORDER BY month
     """
 },
+
+
+"mansi_top_5_expensive_conditions": {
+    "author": "Mansi",
+    "title": "Top 5 Expensive Medical Conditions",
+    "chart": "bar",
+    "x": "condition_name",
+    "y": "avg_cost",
+    "color": "#ef4444",
+    "sql": """
+        SELECT mc.condition_name, ROUND(AVG(a.billing_amount), 2) AS avg_cost
+        FROM Admissions a
+        JOIN Medical_Conditions mc ON a.condition_id = mc.condition_id
+        GROUP BY mc.condition_name
+        ORDER BY avg_cost DESC
+        LIMIT 5
+    """
+},
+
+"mansi_gender_distribution": {
+    "author": "Mansi",
+    "title": "Patient Distribution by Gender",
+    "chart": "pie",
+    "x": "gender",
+    "y": "count",
+    "color": "#3b82f6",
+    "sql": """
+        SELECT gender, COUNT(*) AS count
+        FROM Patients
+        GROUP BY gender
+    """
+},
+
+"mansi_avg_length_of_stay": {
+    "author": "Mansi",
+    "title": "Average Length of Stay (Days)",
+    "chart": "bar",
+    "x": "hospital",
+    "y": "avg_days",
+    "color": "#8b5cf6",
+    "sql": """
+        SELECT hospital,
+               ROUND(AVG(DATEDIFF(discharge_date, date_of_admission)), 2) AS avg_days
+        FROM Admissions
+        GROUP BY hospital
+        ORDER BY avg_days DESC
+    """
+},    
     
 
     # ── ABHIJITH ──────────────────────────────────────────────
