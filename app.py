@@ -492,6 +492,51 @@ QUERIES = {
         ORDER BY avg_days DESC
     """
 },    
+
+"mansi_hospital_billing_rank_window": {
+    "author": "Mansi",
+    "title": "Hospital Billing Rank",
+    "chart": "bar",
+    "x": "hospital",
+    "y": "avg_billing",
+    "color": "#f97316",
+    "sql": """
+        SELECT hospital,
+               avg_billing,
+               RANK() OVER (ORDER BY avg_billing DESC) AS billing_rank
+        FROM (
+            SELECT hospital,
+                   ROUND(AVG(billing_amount), 2) AS avg_billing
+            FROM Admissions
+            GROUP BY hospital
+        ) hospital_summary
+        ORDER BY billing_rank ASC
+    """
+},
+
+"mansi_high_cost_admissions_cte": {
+    "author": "Mansi",
+    "title": "High Cost Admissions by Admission Type",
+    "chart": "bar",
+    "x": "admission_type",
+    "y": "high_cost_count",
+    "color": "#dc2626",
+    "sql": """
+        WITH overall_avg AS (
+            SELECT AVG(billing_amount) AS avg_billing
+            FROM Admissions
+        )
+        SELECT a.admission_type,
+               COUNT(*) AS high_cost_count,
+               ROUND(AVG(a.billing_amount), 2) AS avg_high_cost_billing
+        FROM Admissions a
+        CROSS JOIN overall_avg oa
+        WHERE a.billing_amount > oa.avg_billing
+        GROUP BY a.admission_type
+        ORDER BY high_cost_count DESC
+    """
+},
+    
     
 
     # ── ABHIJITH ──────────────────────────────────────────────
