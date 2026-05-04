@@ -421,37 +421,38 @@ QUERIES = {
     """
 },
 
-"mansi_admissions_per_month": {
+"mansi_avg_billing_by_admission_type": {
     "author": "Mansi",
-    "title": "Admissions per Month",
-    "chart": "line",
-    "x": "month",
-    "y": "total_admissions",
-    "color": "#f59e0b",
+    "title": "Average Billing by Admission Type",
+    "chart": "bar",
+    "x": "admission_type",
+    "y": "avg_billing",
+    "color": "#22c55e",
     "sql": """
-        SELECT DATE_FORMAT(date_of_admission, '%Y-%m') AS month,
-               COUNT(*) AS total_admissions
+        SELECT admission_type,
+               COUNT(*) AS total_cases,
+               ROUND(AVG(billing_amount), 2) AS avg_billing
         FROM Admissions
-        GROUP BY month
-        ORDER BY month
+        GROUP BY admission_type
+        ORDER BY avg_billing DESC
     """
 },
 
-
-"mansi_top_5_expensive_conditions": {
+"mansi_insurance_billing_comparison": {
     "author": "Mansi",
-    "title": "Top 5 Expensive Medical Conditions",
+    "title": "Average Billing by Insurance Provider",
     "chart": "bar",
-    "x": "condition_name",
-    "y": "avg_cost",
-    "color": "#ef4444",
+    "x": "insurance_provider",
+    "y": "avg_billing",
+    "color": "#0ea5e9",
     "sql": """
-        SELECT mc.condition_name, ROUND(AVG(a.billing_amount), 2) AS avg_cost
+        SELECT p.insurance_provider,
+               COUNT(*) AS total_cases,
+               ROUND(AVG(a.billing_amount), 2) AS avg_billing
         FROM Admissions a
-        JOIN Medical_Conditions mc ON a.condition_id = mc.condition_id
-        GROUP BY mc.condition_name
-        ORDER BY avg_cost DESC
-        LIMIT 5
+        JOIN Patients p ON a.patient_id = p.patient_id
+        GROUP BY p.insurance_provider
+        ORDER BY avg_billing DESC
     """
 },
 
