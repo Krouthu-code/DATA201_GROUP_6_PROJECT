@@ -468,7 +468,7 @@ QUERIES = {
     "title": "Patient Distribution by Gender",
     "chart": "pie",
     "x": "gender",
-    "y": "count",
+    "y": "total_patients",
     "color": "#3b82f6",
     "sql": """
         SELECT gender,
