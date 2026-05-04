@@ -564,19 +564,184 @@ GROUP BY gender
     
 
     # ── ABHIJITH ──────────────────────────────────────────────
-    # Add your queries here following the same format:
-    #
-    # "your_query_key": {
-    #     "author": "Abhijith",
-    #     "title": "Your Chart Title",
-    #     "chart": "bar",
-    #     "x": "x_column",
-    #     "y": "y_column",
-    #     "color": "#ec4899",
-    #     "sql": """
-    #         SELECT ...
-    #     """
-    # },
+
+"abhijith_basic_emergency_by_gender": {
+    "author": "Abhijith",
+    "title": "Emergency Admissions by Gender",
+    "chart": "bar",
+    "x": "gender",
+    "y": "emergency_admissions",
+    "color": "#2563eb",
+    "sql": """
+        SELECT p.gender,
+               COUNT(*) AS emergency_admissions
+        FROM Admissions a
+        JOIN Patients p ON a.patient_id = p.patient_id
+        WHERE a.admission_type = 'Emergency'
+        GROUP BY p.gender
+        ORDER BY emergency_admissions DESC
+    """
+},
+
+"abhijith_basic_medication_usage": {
+    "author": "Abhijith",
+    "title": "Medication Usage Count",
+    "chart": "bar",
+    "x": "medication",
+    "y": "usage_count",
+    "color": "#16a34a",
+    "sql": """
+        SELECT medication,
+               COUNT(*) AS usage_count
+        FROM Admissions
+        GROUP BY medication
+        ORDER BY usage_count DESC
+    """
+},
+
+"abhijith_basic_test_results_by_admission": {
+    "author": "Abhijith",
+    "title": "Test Results by Admission Type",
+    "chart": "grouped_bar",
+    "x": "admission_type",
+    "y": "total_cases",
+    "group": "test_results",
+    "sql": """
+        SELECT admission_type,
+               test_results,
+               COUNT(*) AS total_cases
+        FROM Admissions
+        GROUP BY admission_type, test_results
+        ORDER BY admission_type, total_cases DESC
+    """
+},
+
+"abhijith_adv_length_of_stay_by_condition": {
+    "author": "Abhijith",
+    "title": "Average Length of Stay by Condition",
+    "chart": "bar",
+    "x": "condition_name",
+    "y": "avg_stay_days",
+    "color": "#9333ea",
+    "sql": """
+        SELECT mc.condition_name,
+               COUNT(*) AS total_cases,
+               ROUND(AVG(DATEDIFF(a.discharge_date, a.date_of_admission)), 2) AS avg_stay_days
+        FROM Admissions a
+        JOIN Medical_Conditions mc ON a.condition_id = mc.condition_id
+        GROUP BY mc.condition_name
+        HAVING COUNT(*) >= 5
+        ORDER BY avg_stay_days DESC
+    """
+},
+
+"abhijith_adv_billing_lag_by_month": {
+    "author": "Abhijith",
+    "title": "Monthly Billing Change Using LAG",
+    "chart": "line",
+    "x": "month",
+    "y": "avg_billing",
+    "color": "#0284c7",
+    "sql": """
+        WITH monthly_billing AS (
+            SELECT DATE_FORMAT(date_of_admission, '%Y-%m') AS month,
+                   ROUND(AVG(billing_amount), 2) AS avg_billing
+            FROM Admissions
+            GROUP BY month
+        )
+        SELECT month,
+               avg_billing,
+               LAG(avg_billing) OVER (ORDER BY month) AS previous_month_billing,
+               ROUND(avg_billing - LAG(avg_billing) OVER (ORDER BY month), 2) AS billing_change
+        FROM monthly_billing
+        ORDER BY month
+    """
+},
+
+"abhijith_adv_top_hospital_per_condition": {
+    "author": "Abhijith",
+    "title": "Top Hospital per Medical Condition",
+    "chart": "bar",
+    "x": "condition_name",
+    "y": "total_cases",
+    "color": "#ea580c",
+    "sql": """
+        SELECT condition_name,
+               hospital,
+               total_cases
+        FROM (
+            SELECT mc.condition_name,
+                   a.hospital,
+                   COUNT(*) AS total_cases,
+                   RANK() OVER (
+                       PARTITION BY mc.condition_name
+                       ORDER BY COUNT(*) DESC
+                   ) AS hospital_rank
+            FROM Admissions a
+            JOIN Medical_Conditions mc ON a.condition_id = mc.condition_id
+            GROUP BY mc.condition_name, a.hospital
+        ) ranked
+        WHERE hospital_rank = 1
+        ORDER BY total_cases DESC
+    """
+},
+
+"abhijith_adv_abnormal_results_above_avg": {
+    "author": "Abhijith",
+    "title": "Conditions with Above-Average Abnormal Results",
+    "chart": "bar",
+    "x": "condition_name",
+    "y": "abnormal_cases",
+    "color": "#dc2626",
+    "sql": """
+        WITH abnormal_by_condition AS (
+            SELECT mc.condition_name,
+                   COUNT(*) AS abnormal_cases
+            FROM Admissions a
+            JOIN Medical_Conditions mc ON a.condition_id = mc.condition_id
+            WHERE a.test_results = 'Abnormal'
+            GROUP BY mc.condition_name
+        ),
+        overall_avg AS (
+            SELECT AVG(abnormal_cases) AS avg_abnormal
+            FROM abnormal_by_condition
+        )
+        SELECT abc.condition_name,
+               abc.abnormal_cases
+        FROM abnormal_by_condition abc
+        CROSS JOIN overall_avg oa
+        WHERE abc.abnormal_cases > oa.avg_abnormal
+        ORDER BY abc.abnormal_cases DESC
+    """
+},
+
+"abhijith_adv_patient_age_billing_category": {
+    "author": "Abhijith",
+    "title": "Billing by Patient Age Group",
+    "chart": "bar",
+    "x": "age_group",
+    "y": "avg_billing",
+    "color": "#0891b2",
+    "sql": """
+        SELECT age_group,
+               COUNT(*) AS total_admissions,
+               ROUND(AVG(billing_amount), 2) AS avg_billing
+        FROM (
+            SELECT a.billing_amount,
+                   CASE
+                       WHEN p.age < 18 THEN 'Under 18'
+                       WHEN p.age BETWEEN 18 AND 35 THEN '18-35'
+                       WHEN p.age BETWEEN 36 AND 55 THEN '36-55'
+                       WHEN p.age BETWEEN 56 AND 75 THEN '56-75'
+                       ELSE '76+'
+                   END AS age_group
+            FROM Admissions a
+            JOIN Patients p ON a.patient_id = p.patient_id
+        ) age_summary
+        GROUP BY age_group
+        ORDER BY avg_billing DESC
+    """
+},
 
 }
 
