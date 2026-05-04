@@ -405,19 +405,26 @@ QUERIES = {
     """
 },
 
-"mansi_patient_count_by_condition": {
+"mansi_billing_by_room_number": {
     "author": "Mansi",
-    "title": "Patient Count by Medical Condition",
+    "title": "Average Billing by Room Number Range",
     "chart": "bar",
-    "x": "condition_name",
-    "y": "total_patients",
+    "x": "room_range",
+    "y": "avg_billing",
     "color": "#10b981",
     "sql": """
-        SELECT mc.condition_name, COUNT(*) AS total_patients
-        FROM Admissions a
-        JOIN Medical_Conditions mc ON a.condition_id = mc.condition_id
-        GROUP BY mc.condition_name
-        ORDER BY total_patients DESC
+        SELECT
+            CASE
+                WHEN room_number BETWEEN 100 AND 199 THEN '100-199'
+                WHEN room_number BETWEEN 200 AND 299 THEN '200-299'
+                WHEN room_number BETWEEN 300 AND 399 THEN '300-399'
+                ELSE '400+'
+            END AS room_range,
+            COUNT(*) AS total_cases,
+            ROUND(AVG(billing_amount), 2) AS avg_billing
+        FROM Admissions
+        GROUP BY room_range
+        ORDER BY avg_billing DESC
     """
 },
 
