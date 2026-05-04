@@ -471,9 +471,11 @@ QUERIES = {
     "y": "count",
     "color": "#3b82f6",
     "sql": """
-        SELECT gender, COUNT(*) AS count
-        FROM Patients
-        GROUP BY gender
+        SELECT gender,
+COUNT(*) AS total_patients,
+ROUND(AVG(age),1) AS avg_age
+FROM Patients
+GROUP BY gender
     """
 },
 
