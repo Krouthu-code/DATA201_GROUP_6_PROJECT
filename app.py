@@ -388,20 +388,55 @@ QUERIES = {
         """
     },
 
+# ── MANSI ─────────────────────────────────────────────────
     # ── MANSI ─────────────────────────────────────────────────
-    # Add your queries here following the same format:
-    #
-    # "your_query_key": {
-    #     "author": "Mansi",
-    #     "title": "Your Chart Title",
-    #     "chart": "bar",
-    #     "x": "x_column",
-    #     "y": "y_column",
-    #     "color": "#f59e0b",
-    #     "sql": """
-    #         SELECT ...
-    #     """
-    # },
+    "mansi_avg_billing_by_hospital": {
+    "author": "Mansi",
+    "title": "Average Billing by Hospital",
+    "chart": "bar",
+    "x": "hospital",
+    "y": "avg_billing",
+    "color": "#6366f1",
+    "sql": """
+        SELECT hospital, ROUND(AVG(billing_amount), 2) AS avg_billing
+        FROM Admissions
+        GROUP BY hospital
+        ORDER BY avg_billing DESC
+    """
+},
+
+"mansi_patient_count_by_condition": {
+    "author": "Mansi",
+    "title": "Patient Count by Medical Condition",
+    "chart": "bar",
+    "x": "condition_name",
+    "y": "total_patients",
+    "color": "#10b981",
+    "sql": """
+        SELECT mc.condition_name, COUNT(*) AS total_patients
+        FROM Admissions a
+        JOIN Medical_Conditions mc ON a.condition_id = mc.condition_id
+        GROUP BY mc.condition_name
+        ORDER BY total_patients DESC
+    """
+},
+
+"mansi_admissions_per_month": {
+    "author": "Mansi",
+    "title": "Admissions per Month",
+    "chart": "line",
+    "x": "month",
+    "y": "total_admissions",
+    "color": "#f59e0b",
+    "sql": """
+        SELECT DATE_FORMAT(date_of_admission, '%Y-%m') AS month,
+               COUNT(*) AS total_admissions
+        FROM Admissions
+        GROUP BY month
+        ORDER BY month
+    """
+},
+    
 
     # ── ABHIJITH ──────────────────────────────────────────────
     # Add your queries here following the same format:
