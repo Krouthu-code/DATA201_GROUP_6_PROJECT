@@ -244,7 +244,6 @@ QUERIES = {
     },
 
     # ── CHINMAYI ──────────────────────────────────────────────
-   # ── CHINMAYI ──────────────────────────────────────────────
 
     "chinmayi_condition_billing_ranked": {
         "author": "Chinmayi",
@@ -282,21 +281,21 @@ QUERIES = {
         "color": "#ef4444",
         "sql": """
             WITH hospital_avg AS (
-                SELECT
-                    hospital,
-                    ROUND(AVG(billing_amount), 2) AS avg_billing
-                FROM   Admissions
-                GROUP  BY hospital
+                SELECT h.hospital_name AS hospital,
+                       ROUND(AVG(a.billing_amount), 2) AS avg_billing
+                FROM   Admissions a
+                JOIN   hospitals h ON a.hospital_id = h.hospital_id
+                GROUP  BY h.hospital_name
             )
-            SELECT
-                a.hospital,
-                COUNT(*)                      AS high_risk_count,
-                ROUND(AVG(a.billing_amount), 2) AS avg_high_risk_billing,
-                h.avg_billing                 AS hospital_avg_billing
+            SELECT ha.hospital,
+                   COUNT(*) AS high_risk_count,
+                   ROUND(AVG(a.billing_amount), 2) AS avg_high_risk_billing,
+                   ha.avg_billing AS hospital_avg_billing
             FROM   Admissions a
-            JOIN   hospital_avg h ON a.hospital = h.hospital
-            WHERE  a.billing_amount > h.avg_billing * 1.5
-            GROUP  BY a.hospital, h.avg_billing
+            JOIN   hospitals h ON a.hospital_id = h.hospital_id
+            JOIN   hospital_avg ha ON h.hospital_name = ha.hospital
+            WHERE  a.billing_amount > ha.avg_billing * 1.5
+            GROUP  BY ha.hospital, ha.avg_billing
             ORDER  BY high_risk_count DESC
         """
     },
@@ -305,8 +304,8 @@ QUERIES = {
         "author": "Chinmayi",
         "title": "Readmission Count by Condition (Subquery + HAVING)",
         "chart": "horizontal_bar",
-        "x": "condition_name",
-        "y": "readmission_count",
+        "y": "condition_name",
+        "x": "readmission_count",
         "color": "#f59e0b",
         "sql": """
             SELECT
@@ -388,360 +387,351 @@ QUERIES = {
         """
     },
 
-# ── MANSI ─────────────────────────────────────────────────
     # ── MANSI ─────────────────────────────────────────────────
-   
 
-"mansi_billing_by_room_number": {
-    "author": "Mansi",
-    "title": "Average Billing by Room Number Range",
-    "chart": "bar",
-    "x": "room_range",
-    "y": "avg_billing",
-    "color": "#10b981",
-    "sql": """
-        SELECT
-            CASE
-                WHEN room_number BETWEEN 100 AND 199 THEN '100-199'
-                WHEN room_number BETWEEN 200 AND 299 THEN '200-299'
-                WHEN room_number BETWEEN 300 AND 399 THEN '300-399'
-                ELSE '400+'
-            END AS room_range,
-            COUNT(*) AS total_cases,
-            ROUND(AVG(billing_amount), 2) AS avg_billing
-        FROM Admissions
-        GROUP BY room_range
-        ORDER BY avg_billing DESC
-    """
-},
-
-
-"mansi_gender_distribution": {
-    "author": "Mansi",
-    "title": "Patient Distribution by Gender",
-    "chart": "pie",
-    "x": "gender",
-    "y": "total_patients",
-    "color": "#3b82f6",
-    "sql": """
-        SELECT gender,
-COUNT(*) AS total_patients,
-ROUND(AVG(age),1) AS avg_age
-FROM Patients
-GROUP BY gender
-    """
-},
-
-"mansi_hospital_billing_rank_window": {
-    "author": "Mansi",
-    "title": "Hospital Billing Rank",
-    "chart": "bar",
-    "x": "hospital",
-    "y": "avg_billing",
-    "color": "#f97316",
-    "sql": """
-        SELECT hospital,
-               avg_billing,
-               RANK() OVER (ORDER BY avg_billing DESC) AS billing_rank
-        FROM (
-            SELECT hospital,
-                   ROUND(AVG(billing_amount), 2) AS avg_billing
+    "mansi_billing_by_room_number": {
+        "author": "Mansi",
+        "title": "Average Billing by Room Number Range",
+        "chart": "bar",
+        "x": "room_range",
+        "y": "avg_billing",
+        "color": "#10b981",
+        "sql": """
+            SELECT
+                CASE
+                    WHEN room_number BETWEEN 100 AND 199 THEN '100-199'
+                    WHEN room_number BETWEEN 200 AND 299 THEN '200-299'
+                    WHEN room_number BETWEEN 300 AND 399 THEN '300-399'
+                    ELSE '400+'
+                END AS room_range,
+                COUNT(*) AS total_cases,
+                ROUND(AVG(billing_amount), 2) AS avg_billing
             FROM Admissions
-            GROUP BY hospital
-        ) hospital_summary
-        ORDER BY billing_rank ASC
-    """
-},
+            GROUP BY room_range
+            ORDER BY avg_billing DESC
+        """
+    },
 
-"mansi_high_cost_admissions_cte": {
-    "author": "Mansi",
-    "title": "High Cost Admissions by Admission Type",
-    "chart": "bar",
-    "x": "admission_type",
-    "y": "high_cost_count",
-    "color": "#dc2626",
-    "sql": """
-        WITH overall_avg AS (
-            SELECT AVG(billing_amount) AS avg_billing
-            FROM Admissions
-        )
-        SELECT a.admission_type,
-               COUNT(*) AS high_cost_count,
-               ROUND(AVG(a.billing_amount), 2) AS avg_high_cost_billing
-        FROM Admissions a
-        CROSS JOIN overall_avg oa
-        WHERE a.billing_amount > oa.avg_billing
-        GROUP BY a.admission_type
-        ORDER BY high_cost_count DESC
-    """
-},
-    
-"mansi_hospital_billing_above_average_cte": {
-    "author": "Mansi",
-    "title": "Hospitals Above Overall Average Billing",
-    "chart": "bar",
-    "x": "hospital",
-    "y": "avg_billing",
-    "color": "#6366f1",
-    "sql": """
-        WITH overall_avg AS (
-            SELECT AVG(billing_amount) AS overall_billing_avg
-            FROM Admissions
-        )
-        SELECT hospital,
-               ROUND(AVG(billing_amount), 2) AS avg_billing,
-               COUNT(*) AS total_admissions
-        FROM Admissions
-        GROUP BY hospital
-        HAVING AVG(billing_amount) > (SELECT overall_billing_avg FROM overall_avg)
-        ORDER BY avg_billing DESC
-    """
-},
+    "mansi_gender_distribution": {
+        "author": "Mansi",
+        "title": "Patient Distribution by Gender",
+        "chart": "pie",
+        "x": "gender",
+        "y": "total_patients",
+        "color": "#3b82f6",
+        "sql": """
+            SELECT gender,
+                   COUNT(*) AS total_patients,
+                   ROUND(AVG(age), 1) AS avg_age
+            FROM Patients
+            GROUP BY gender
+        """
+    },
 
-"mansi_admission_type_billing_rank": {
-    "author": "Mansi",
-    "title": "Admission Type Billing Rank",
-    "chart": "bar",
-    "x": "admission_type",
-    "y": "avg_billing",
-    "color": "#22c55e",
-    "sql": """
-        SELECT admission_type,
-               avg_billing,
-               RANK() OVER (ORDER BY avg_billing DESC) AS billing_rank
-        FROM (
+    "mansi_hospital_billing_rank_window": {
+        "author": "Mansi",
+        "title": "Hospital Billing Rank",
+        "chart": "bar",
+        "x": "hospital",
+        "y": "avg_billing",
+        "color": "#f97316",
+        "sql": """
+            SELECT hospital_name AS hospital,
+                   avg_billing,
+                   RANK() OVER (ORDER BY avg_billing DESC) AS billing_rank
+            FROM (
+                SELECT h.hospital_name,
+                       ROUND(AVG(a.billing_amount), 2) AS avg_billing
+                FROM Admissions a
+                JOIN hospitals h ON a.hospital_id = h.hospital_id
+                GROUP BY h.hospital_name
+            ) hospital_summary
+            ORDER BY billing_rank ASC
+        """
+    },
+
+    "mansi_high_cost_admissions_cte": {
+        "author": "Mansi",
+        "title": "High Cost Admissions by Admission Type",
+        "chart": "bar",
+        "x": "admission_type",
+        "y": "high_cost_count",
+        "color": "#dc2626",
+        "sql": """
+            WITH overall_avg AS (
+                SELECT AVG(billing_amount) AS avg_billing
+                FROM Admissions
+            )
+            SELECT a.admission_type,
+                   COUNT(*) AS high_cost_count,
+                   ROUND(AVG(a.billing_amount), 2) AS avg_high_cost_billing
+            FROM Admissions a
+            CROSS JOIN overall_avg oa
+            WHERE a.billing_amount > oa.avg_billing
+            GROUP BY a.admission_type
+            ORDER BY high_cost_count DESC
+        """
+    },
+
+    "mansi_hospital_billing_above_average_cte": {
+        "author": "Mansi",
+        "title": "Hospitals Above Overall Average Billing",
+        "chart": "bar",
+        "x": "hospital",
+        "y": "avg_billing",
+        "color": "#6366f1",
+        "sql": """
+            WITH overall_avg AS (
+                SELECT AVG(billing_amount) AS overall_billing_avg
+                FROM Admissions
+            )
+            SELECT h.hospital_name AS hospital,
+                   ROUND(AVG(a.billing_amount), 2) AS avg_billing,
+                   COUNT(*) AS total_admissions
+            FROM Admissions a
+            JOIN hospitals h ON a.hospital_id = h.hospital_id
+            GROUP BY h.hospital_name
+            HAVING AVG(a.billing_amount) > (SELECT overall_billing_avg FROM overall_avg)
+            ORDER BY avg_billing DESC
+        """
+    },
+
+    "mansi_admission_type_billing_rank": {
+        "author": "Mansi",
+        "title": "Admission Type Billing Rank",
+        "chart": "bar",
+        "x": "admission_type",
+        "y": "avg_billing",
+        "color": "#22c55e",
+        "sql": """
             SELECT admission_type,
-                   ROUND(AVG(billing_amount), 2) AS avg_billing
-            FROM Admissions
-            GROUP BY admission_type
-        ) ranked_admission_types
-        ORDER BY billing_rank
-    """
-},
+                   avg_billing,
+                   RANK() OVER (ORDER BY avg_billing DESC) AS billing_rank
+            FROM (
+                SELECT admission_type,
+                       ROUND(AVG(billing_amount), 2) AS avg_billing
+                FROM Admissions
+                GROUP BY admission_type
+            ) ranked_admission_types
+            ORDER BY billing_rank
+        """
+    },
 
-"mansi_insurance_high_cost_subquery": {
-    "author": "Mansi",
-    "title": "High Cost Cases by Insurance Provider",
-    "chart": "bar",
-    "x": "insurance_provider",
-    "y": "high_cost_cases",
-    "color": "#0ea5e9",
-    "sql": """
-        SELECT p.insurance_provider,
-               COUNT(*) AS high_cost_cases,
-               ROUND(AVG(a.billing_amount), 2) AS avg_high_cost_billing
-        FROM Admissions a
-        JOIN Patients p ON a.patient_id = p.patient_id
-        WHERE a.billing_amount > (
-            SELECT AVG(billing_amount)
-            FROM Admissions
-        )
-        GROUP BY p.insurance_provider
-        ORDER BY high_cost_cases DESC
-    """
-},
+    "mansi_insurance_high_cost_subquery": {
+        "author": "Mansi",
+        "title": "High Cost Cases by Insurance Provider",
+        "chart": "bar",
+        "x": "insurance_provider",
+        "y": "high_cost_cases",
+        "color": "#0ea5e9",
+        "sql": """
+            SELECT p.insurance_provider,
+                   COUNT(*) AS high_cost_cases,
+                   ROUND(AVG(a.billing_amount), 2) AS avg_high_cost_billing
+            FROM Admissions a
+            JOIN Patients p ON a.patient_id = p.patient_id
+            WHERE a.billing_amount > (
+                SELECT AVG(billing_amount)
+                FROM Admissions
+            )
+            GROUP BY p.insurance_provider
+            ORDER BY high_cost_cases DESC
+        """
+    },
 
-"mansi_hospital_length_of_stay_rank": {
-    "author": "Mansi",
-    "title": "Hospital Length of Stay Rank",
-    "chart": "bar",
-    "x": "hospital",
-    "y": "avg_days",
-    "color": "#8b5cf6",
-    "sql": """
-        SELECT hospital,
-               avg_days,
-               RANK() OVER (ORDER BY avg_days DESC) AS stay_rank
-        FROM (
-            SELECT hospital,
-                   ROUND(AVG(DATEDIFF(discharge_date, date_of_admission)), 2) AS avg_days
-            FROM Admissions
-            GROUP BY hospital
-        ) stay_summary
-        ORDER BY stay_rank
-    """
-},
-    
+    "mansi_hospital_length_of_stay_rank": {
+        "author": "Mansi",
+        "title": "Hospital Length of Stay Rank",
+        "chart": "bar",
+        "x": "hospital",
+        "y": "avg_days",
+        "color": "#8b5cf6",
+        "sql": """
+            SELECT hospital_name AS hospital,
+                   avg_days,
+                   RANK() OVER (ORDER BY avg_days DESC) AS stay_rank
+            FROM (
+                SELECT h.hospital_name,
+                       ROUND(AVG(DATEDIFF(a.discharge_date, a.date_of_admission)), 2) AS avg_days
+                FROM Admissions a
+                JOIN hospitals h ON a.hospital_id = h.hospital_id
+                GROUP BY h.hospital_name
+            ) stay_summary
+            ORDER BY stay_rank
+        """
+    },
 
     # ── ABHIJITH ──────────────────────────────────────────────
 
-"abhijith_basic_emergency_by_gender": {
-    "author": "Abhijith",
-    "title": "Emergency Admissions by Gender",
-    "chart": "bar",
-    "x": "gender",
-    "y": "emergency_admissions",
-    "color": "#2563eb",
-    "sql": """
-        SELECT p.gender,
-               COUNT(*) AS emergency_admissions
-        FROM Admissions a
-        JOIN Patients p ON a.patient_id = p.patient_id
-        WHERE a.admission_type = 'Emergency'
-        GROUP BY p.gender
-        ORDER BY emergency_admissions DESC
-    """
-},
-
-"abhijith_basic_medication_usage": {
-    "author": "Abhijith",
-    "title": "Medication Usage Count",
-    "chart": "bar",
-    "x": "medication",
-    "y": "usage_count",
-    "color": "#16a34a",
-    "sql": """
-        SELECT medication,
-               COUNT(*) AS usage_count
-        FROM Admissions
-        GROUP BY medication
-        ORDER BY usage_count DESC
-    """
-},
-
-"abhijith_basic_test_results_by_admission": {
-    "author": "Abhijith",
-    "title": "Test Results by Admission Type",
-    "chart": "grouped_bar",
-    "x": "admission_type",
-    "y": "total_cases",
-    "group": "test_results",
-    "sql": """
-        SELECT admission_type,
-               test_results,
-               COUNT(*) AS total_cases
-        FROM Admissions
-        GROUP BY admission_type, test_results
-        ORDER BY admission_type, total_cases DESC
-    """
-},
-
-"abhijith_adv_length_of_stay_by_condition": {
-    "author": "Abhijith",
-    "title": "Average Length of Stay by Condition",
-    "chart": "bar",
-    "x": "condition_name",
-    "y": "avg_stay_days",
-    "color": "#9333ea",
-    "sql": """
-        SELECT mc.condition_name,
-               COUNT(*) AS total_cases,
-               ROUND(AVG(DATEDIFF(a.discharge_date, a.date_of_admission)), 2) AS avg_stay_days
-        FROM Admissions a
-        JOIN Medical_Conditions mc ON a.condition_id = mc.condition_id
-        GROUP BY mc.condition_name
-        HAVING COUNT(*) >= 5
-        ORDER BY avg_stay_days DESC
-    """
-},
-
-"abhijith_adv_billing_lag_by_month": {
-    "author": "Abhijith",
-    "title": "Monthly Billing Change Using LAG",
-    "chart": "line",
-    "x": "month",
-    "y": "avg_billing",
-    "color": "#0284c7",
-    "sql": """
-        WITH monthly_billing AS (
-            SELECT DATE_FORMAT(date_of_admission, '%Y-%m') AS month,
-                   ROUND(AVG(billing_amount), 2) AS avg_billing
-            FROM Admissions
-            GROUP BY month
-        )
-        SELECT month,
-               avg_billing,
-               LAG(avg_billing) OVER (ORDER BY month) AS previous_month_billing,
-               ROUND(avg_billing - LAG(avg_billing) OVER (ORDER BY month), 2) AS billing_change
-        FROM monthly_billing
-        ORDER BY month
-    """
-},
-
-"abhijith_adv_top_hospital_per_condition": {
-    "author": "Abhijith",
-    "title": "Top Hospital per Medical Condition",
-    "chart": "bar",
-    "x": "condition_name",
-    "y": "total_cases",
-    "color": "#ea580c",
-    "sql": """
-        SELECT condition_name,
-               hospital,
-               total_cases
-        FROM (
-            SELECT mc.condition_name,
-                   a.hospital,
-                   COUNT(*) AS total_cases,
-                   RANK() OVER (
-                       PARTITION BY mc.condition_name
-                       ORDER BY COUNT(*) DESC
-                   ) AS hospital_rank
-            FROM Admissions a
-            JOIN Medical_Conditions mc ON a.condition_id = mc.condition_id
-            GROUP BY mc.condition_name, a.hospital
-        ) ranked
-        WHERE hospital_rank = 1
-        ORDER BY total_cases DESC
-    """
-},
-
-"abhijith_adv_abnormal_results_above_avg": {
-    "author": "Abhijith",
-    "title": "Conditions with Above-Average Abnormal Results",
-    "chart": "bar",
-    "x": "condition_name",
-    "y": "abnormal_cases",
-    "color": "#dc2626",
-    "sql": """
-        WITH abnormal_by_condition AS (
-            SELECT mc.condition_name,
-                   COUNT(*) AS abnormal_cases
-            FROM Admissions a
-            JOIN Medical_Conditions mc ON a.condition_id = mc.condition_id
-            WHERE a.test_results = 'Abnormal'
-            GROUP BY mc.condition_name
-        ),
-        overall_avg AS (
-            SELECT AVG(abnormal_cases) AS avg_abnormal
-            FROM abnormal_by_condition
-        )
-        SELECT abc.condition_name,
-               abc.abnormal_cases
-        FROM abnormal_by_condition abc
-        CROSS JOIN overall_avg oa
-        WHERE abc.abnormal_cases > oa.avg_abnormal
-        ORDER BY abc.abnormal_cases DESC
-    """
-},
-
-"abhijith_adv_patient_age_billing_category": {
-    "author": "Abhijith",
-    "title": "Billing by Patient Age Group",
-    "chart": "bar",
-    "x": "age_group",
-    "y": "avg_billing",
-    "color": "#0891b2",
-    "sql": """
-        SELECT age_group,
-               COUNT(*) AS total_admissions,
-               ROUND(AVG(billing_amount), 2) AS avg_billing
-        FROM (
-            SELECT a.billing_amount,
-                   CASE
-                       WHEN p.age < 18 THEN 'Under 18'
-                       WHEN p.age BETWEEN 18 AND 35 THEN '18-35'
-                       WHEN p.age BETWEEN 36 AND 55 THEN '36-55'
-                       WHEN p.age BETWEEN 56 AND 75 THEN '56-75'
-                       ELSE '76+'
-                   END AS age_group
+    "abhijith_basic_emergency_by_gender": {
+        "author": "Abhijith",
+        "title": "Emergency Admissions by Gender",
+        "chart": "bar",
+        "x": "gender",
+        "y": "emergency_admissions",
+        "color": "#2563eb",
+        "sql": """
+            SELECT p.gender,
+                   COUNT(*) AS emergency_admissions
             FROM Admissions a
             JOIN Patients p ON a.patient_id = p.patient_id
-        ) age_summary
-        GROUP BY age_group
-        ORDER BY avg_billing DESC
+            WHERE a.admission_type = 'Emergency'
+            GROUP BY p.gender
+            ORDER BY emergency_admissions DESC
+        """
+    },
+
+    "abhijith_basic_medication_usage": {
+        "author": "Abhijith",
+        "title": "Medication Usage Count",
+        "chart": "bar",
+        "x": "medication",
+        "y": "usage_count",
+        "color": "#16a34a",
+        "sql": """
+            SELECT m.medication_name AS medication,
+                   COUNT(*) AS usage_count
+            FROM Admissions a
+            JOIN Medications m ON a.medication_id = m.medication_id
+            GROUP BY m.medication_name
+            ORDER BY usage_count DESC
+        """
+    },
+
+    "abhijith_basic_test_results_by_admission": {
+        "author": "Abhijith",
+        "title": "Test Results by Admission Type",
+        "chart": "grouped_bar",
+        "x": "admission_type",
+        "y": "total_cases",
+        "group": "test_results",
+        "sql": """
+            SELECT admission_type,
+                   test_results,
+                   COUNT(*) AS total_cases
+            FROM Admissions
+            GROUP BY admission_type, test_results
+            ORDER BY admission_type, total_cases DESC
+        """
+    },
+
+    "abhijith_adv_length_of_stay_by_condition": {
+        "author": "Abhijith",
+        "title": "Average Length of Stay by Condition",
+        "chart": "bar",
+        "x": "condition_name",
+        "y": "avg_stay_days",
+        "color": "#9333ea",
+        "sql": """
+            SELECT mc.condition_name,
+                   COUNT(*) AS total_cases,
+                   ROUND(AVG(DATEDIFF(a.discharge_date, a.date_of_admission)), 2) AS avg_stay_days
+            FROM Admissions a
+            JOIN Medical_Conditions mc ON a.condition_id = mc.condition_id
+            GROUP BY mc.condition_name
+            HAVING COUNT(*) >= 5
+            ORDER BY avg_stay_days DESC
+        """
+    },
+
+    "abhijith_adv_billing_lag_by_month": {
+        "author": "Abhijith",
+        "title": "Monthly Billing Change Using LAG",
+        "chart": "line",
+        "x": "month",
+        "y": "avg_billing",
+        "color": "#0284c7",
+        "sql": """
+            WITH monthly_billing AS (
+                SELECT DATE_FORMAT(date_of_admission, '%Y-%m') AS month,
+                       ROUND(AVG(billing_amount), 2) AS avg_billing
+                FROM Admissions
+                GROUP BY month
+            )
+            SELECT month,
+                   avg_billing,
+                   LAG(avg_billing) OVER (ORDER BY month) AS previous_month_billing,
+                   ROUND(avg_billing - LAG(avg_billing) OVER (ORDER BY month), 2) AS billing_change
+            FROM monthly_billing
+            ORDER BY month
+        """
+    },
+
+    "abhijith_adv_top_hospital_per_condition": {
+        "author": "Abhijith",
+        "title": "Top Hospital per Medical Condition",
+        "chart": "bar",
+        "x": "condition_name",
+        "y": "total_cases",
+        "color": "#ea580c",
+        "sql": """
+            SELECT condition_name,
+                   hospital,
+                   total_cases
+            FROM (
+                SELECT mc.condition_name,
+                       h.hospital_name AS hospital,
+                       COUNT(*) AS total_cases,
+                       RANK() OVER (
+                           PARTITION BY mc.condition_name
+                           ORDER BY COUNT(*) DESC
+                       ) AS hospital_rank
+                FROM Admissions a
+                JOIN Medical_Conditions mc ON a.condition_id = mc.condition_id
+                JOIN hospitals h ON a.hospital_id = h.hospital_id
+                GROUP BY mc.condition_name, h.hospital_name
+            ) ranked
+            WHERE hospital_rank = 1
+            ORDER BY total_cases DESC
+        """
+    },
+
+    "abhijith_adv_abnormal_results_above_avg": {
+    "author": "Abhijith",
+    "title": "Test Result Distribution by Condition",
+    "chart": "grouped_bar",
+    "x": "condition_name",
+    "y": "result_count",
+    "group": "test_results",
+    "color": "#dc2626",
+    "sql": """
+        SELECT mc.condition_name,
+               a.test_results,
+               COUNT(*) AS result_count
+        FROM Admissions a
+        JOIN Medical_Conditions mc ON a.condition_id = mc.condition_id
+        GROUP BY mc.condition_name, a.test_results
+        ORDER BY mc.condition_name, result_count DESC
     """
-},
+    },
+
+    "abhijith_adv_patient_age_billing_category": {
+        "author": "Abhijith",
+        "title": "Billing by Patient Age Group",
+        "chart": "bar",
+        "x": "age_group",
+        "y": "avg_billing",
+        "color": "#0891b2",
+        "sql": """
+            SELECT age_group,
+                   COUNT(*) AS total_admissions,
+                   ROUND(AVG(billing_amount), 2) AS avg_billing
+            FROM (
+                SELECT a.billing_amount,
+                       CASE
+                           WHEN p.age < 18 THEN 'Under 18'
+                           WHEN p.age BETWEEN 18 AND 35 THEN '18-35'
+                           WHEN p.age BETWEEN 36 AND 55 THEN '36-55'
+                           WHEN p.age BETWEEN 56 AND 75 THEN '56-75'
+                           ELSE '76+'
+                       END AS age_group
+                FROM Admissions a
+                JOIN Patients p ON a.patient_id = p.patient_id
+            ) age_summary
+            GROUP BY age_group
+            ORDER BY avg_billing DESC
+        """
+    },
 
 }
 
