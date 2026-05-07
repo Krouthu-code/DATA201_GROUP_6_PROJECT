@@ -617,6 +617,25 @@ QUERIES = {
         """
     },
 
+    "mansi_billing_by_room_number": {
+    "author": "Mansi",
+    "title": "Billing by Room Number",
+    "chart": "bar",
+    "x": "room_number",
+    "y": "avg_billing",
+    "color": "#14b8a6",
+    "sql": """
+        SELECT
+            room_number,
+            ROUND(AVG(billing_amount), 2) AS avg_billing,
+            COUNT(*) AS total_admissions
+        FROM Admissions
+        GROUP BY room_number
+        ORDER BY avg_billing DESC
+        LIMIT 10
+    """
+},
+
     # ── ABHIJITH ──────────────────────────────────────────────
 
     "abhijith_basic_emergency_by_gender": {
