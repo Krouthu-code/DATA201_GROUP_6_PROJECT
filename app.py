@@ -454,44 +454,42 @@ QUERIES = {
 
     # ── MANSI ─────────────────────────────────────────────────
 
-    "mansi_billing_by_room_number": {
-        "author": "Mansi",
-        "title": "Average Billing by Room Number Range",
-        "chart": "bar",
-        "x": "room_range",
-        "y": "avg_billing",
-        "color": "#10b981",
-        "sql": """
-            SELECT
-                CASE
-                    WHEN room_number BETWEEN 100 AND 199 THEN '100-199'
-                    WHEN room_number BETWEEN 200 AND 299 THEN '200-299'
-                    WHEN room_number BETWEEN 300 AND 399 THEN '300-399'
-                    ELSE '400+'
-                END AS room_range,
-                COUNT(*) AS total_cases,
-                ROUND(AVG(billing_amount), 2) AS avg_billing
-            FROM Admissions
-            GROUP BY room_range
-            ORDER BY avg_billing DESC
-        """
-    },
+   "mansi_admission_day_distribution": {
+    "author": "Mansi",
+    "title": "Admissions by Day of Week",
+    "chart": "bar",
+    "x": "admission_day",
+    "y": "total_admissions",
+    "color": "#10b981",
+    "sql": """
+        SELECT
+            DAYNAME(date_of_admission) AS admission_day,
+            COUNT(*) AS total_admissions
+        FROM Admissions
+        GROUP BY DAYOFWEEK(date_of_admission), DAYNAME(date_of_admission)
+        ORDER BY DAYOFWEEK(date_of_admission)
+    """
+},
 
-    "mansi_gender_distribution": {
-        "author": "Mansi",
-        "title": "Patient Distribution by Gender",
-        "chart": "pie",
-        "x": "gender",
-        "y": "total_patients",
-        "color": "#3b82f6",
-        "sql": """
-            SELECT gender,
-                   COUNT(*) AS total_patients,
-                   ROUND(AVG(age), 1) AS avg_age
-            FROM Patients
-            GROUP BY gender
-        """
-    },
+"mansi_weekday_vs_weekend": {
+    "author": "Mansi",
+    "title": "Weekday vs Weekend Admissions",
+    "chart": "pie",
+    "x": "admission_day_type",
+    "y": "total_admissions",
+    "color": "#3b82f6",
+    "sql": """
+        SELECT
+            CASE
+                WHEN DAYOFWEEK(date_of_admission) IN (1,7)
+                THEN 'Weekend'
+                ELSE 'Weekday'
+            END AS admission_day_type,
+            COUNT(*) AS total_admissions
+        FROM Admissions
+        GROUP BY admission_day_type
+    """
+},
 
     "mansi_hospital_billing_rank_window": {
         "author": "Mansi",
@@ -561,48 +559,41 @@ QUERIES = {
         """
     },
 
-    "mansi_admission_type_billing_rank": {
-        "author": "Mansi",
-        "title": "Admission Type Billing Rank",
-        "chart": "bar",
-        "x": "admission_type",
-        "y": "avg_billing",
-        "color": "#22c55e",
-        "sql": """
-            SELECT admission_type,
-                   avg_billing,
-                   RANK() OVER (ORDER BY avg_billing DESC) AS billing_rank
-            FROM (
-                SELECT admission_type,
-                       ROUND(AVG(billing_amount), 2) AS avg_billing
-                FROM Admissions
-                GROUP BY admission_type
-            ) ranked_admission_types
-            ORDER BY billing_rank
-        """
-    },
+ "mansi_discharge_month_distribution": {
+    "author": "Mansi",
+    "title": "Discharge Month Distribution",
+    "chart": "bar",
+    "x": "discharge_month",
+    "y": "total_discharges",
+    "color": "#f97316",
+    "sql": """
+        SELECT
+            MONTHNAME(discharge_date) AS discharge_month,
+            COUNT(*) AS total_discharges
+        FROM Admissions
+        GROUP BY MONTH(discharge_date), MONTHNAME(discharge_date)
+        ORDER BY MONTH(discharge_date)
+    """
+},
 
-    "mansi_insurance_high_cost_subquery": {
-        "author": "Mansi",
-        "title": "High Cost Cases by Insurance Provider",
-        "chart": "bar",
-        "x": "insurance_provider",
-        "y": "high_cost_cases",
-        "color": "#0ea5e9",
-        "sql": """
-            SELECT p.insurance_provider,
-                   COUNT(*) AS high_cost_cases,
-                   ROUND(AVG(a.billing_amount), 2) AS avg_high_cost_billing
-            FROM Admissions a
-            JOIN Patients p ON a.patient_id = p.patient_id
-            WHERE a.billing_amount > (
-                SELECT AVG(billing_amount)
-                FROM Admissions
-            )
-            GROUP BY p.insurance_provider
-            ORDER BY high_cost_cases DESC
-        """
-    },
+"mansi_room_usage_by_hospital": {
+    "author": "Mansi",
+    "title": "Room Usage by Hospital",
+    "chart": "bar",
+    "x": "hospital_name",
+    "y": "rooms_used",
+    "color": "#8b5cf6",
+    "sql": """
+        SELECT
+            h.hospital_name,
+            COUNT(DISTINCT a.room_number) AS rooms_used
+        FROM Admissions a
+        JOIN Hospitals h
+        ON a.hospital_id = h.hospital_id
+        GROUP BY h.hospital_name
+        ORDER BY rooms_used DESC
+    """
+},
 
     "mansi_hospital_length_of_stay_rank": {
         "author": "Mansi",
