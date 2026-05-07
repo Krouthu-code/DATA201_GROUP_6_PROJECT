@@ -672,6 +672,32 @@ QUERIES = {
     """
 },
 
+"mansi_insurance_high_cost_subquery": {
+    "author": "Mansi",
+    "title": "High Cost Admissions by Insurance Provider",
+    "chart": "bar",
+    "x": "insurance_provider",
+    "y": "high_cost_cases",
+    "color": "#8b5cf6",
+    "sql": """
+        SELECT
+            insurance_provider,
+            COUNT(*) AS high_cost_cases
+        FROM (
+            SELECT
+                p.insurance_provider,
+                a.billing_amount
+            FROM Admissions a
+            JOIN Patients p
+            ON a.patient_id = p.patient_id
+            WHERE a.billing_amount >
+                (SELECT AVG(billing_amount) FROM Admissions)
+        ) high_cost
+        GROUP BY insurance_provider
+        ORDER BY high_cost_cases DESC
+    """
+},
+    
     # ── ABHIJITH ──────────────────────────────────────────────
 
     "abhijith_basic_emergency_by_gender": {
