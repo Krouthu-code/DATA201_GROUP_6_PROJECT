@@ -636,6 +636,22 @@ QUERIES = {
     """
 },
 
+    "mansi_gender_distribution": {
+    "author": "Mansi",
+    "title": "Patient Gender Distribution",
+    "chart": "pie",
+    "x": "gender",
+    "y": "total_patients",
+    "color": "#3b82f6",
+    "sql": """
+        SELECT
+            gender,
+            COUNT(*) AS total_patients
+        FROM Patients
+        GROUP BY gender
+    """
+},
+
     # ── ABHIJITH ──────────────────────────────────────────────
 
     "abhijith_basic_emergency_by_gender": {
