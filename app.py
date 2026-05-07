@@ -652,6 +652,26 @@ QUERIES = {
     """
 },
 
+    "mansi_admission_type_billing_rank": {
+    "author": "Mansi",
+    "title": "Admission Type Billing Rank",
+    "chart": "bar",
+    "x": "admission_type",
+    "y": "avg_billing",
+    "color": "#f97316",
+    "sql": """
+        SELECT
+            admission_type,
+            ROUND(AVG(billing_amount), 2) AS avg_billing,
+            RANK() OVER (
+                ORDER BY AVG(billing_amount) DESC
+            ) AS billing_rank
+        FROM Admissions
+        GROUP BY admission_type
+        ORDER BY billing_rank
+    """
+},
+
     # ── ABHIJITH ──────────────────────────────────────────────
 
     "abhijith_basic_emergency_by_gender": {
